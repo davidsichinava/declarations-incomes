@@ -1,0 +1,217 @@
+library(tidyverse)
+library(extrafont)
+
+loadfonts(device = "win")
+
+theme_ef <- function () { 
+  theme_minimal(base_size=12) %+replace%
+    theme(
+      axis.title = element_blank(),
+      title = element_blank(),
+      # axis.text.x = element_blank(),
+      # panel.grid = element_blank(),
+      strip.text = element_text(family = "Lato", face="bold", size = 14),
+      text = element_text(family= "Lato"),
+      plot.title = element_text(size=14, face="bold", family="Lato", hjust = 0),
+      plot.subtitle = element_text(size=12, family="Lato", hjust=0),
+      axis.text = element_text(size=12, family="Lato", color = "black"),
+      legend.position = "none"
+    )
+}
+
+setwd("D:\\Dropbox (Personal)\\My projects\\scratchpad\\tourism")
+
+tourism_count <- data.frame()
+
+country_filter <- c("Belarus", "Russia", "Ukraine", "International Visitor Trips", "Georgia (Nonresident)")
+  
+for(i in 2011:2022) {
+  sheet_name = paste0(i, "")
+  readxl::read_excel("2011-2022up-2.xlsx", sheet = sheet_name) %>%
+    filter(Country %in% country_filter) %>%
+    select(-sheet_name)%>%
+    mutate(
+      year = i
+    ) %>%
+    pivot_longer(-c(Country, year), values_to = "travel_count", names_to = "month")%>%
+    mutate(
+      month = rep(1:12, 5)
+    )-> append_year
+  
+  tourism_count <- bind_rows(tourism_count, append_year)
+}
+
+
+month_filter <- c("January", "February", "March", "April", "May", "June", "July", "August", "September")
+
+year_2022 <- data.frame()
+
+for(i in seq_along(month_filter)) {
+  filter_name = paste0(month_filter[i], "")
+  sheet_name = paste0("2022 ", month_filter[i])
+  column_name = paste0("2022: ", month_filter[i])
+  file_name = paste0("2022-", month_filter[i], ".xlsx")
+  readxl::read_excel(file_name, sheet = sheet_name) %>%
+    filter(Country %in% country_filter) %>%
+    select(c("Country", column_name))%>%
+    mutate(
+      year = 2022,
+    ) %>%
+    pivot_longer(-c(Country, year), values_to = "travel_count", names_to = "month")%>%
+    mutate(
+      month = i,
+    )-> append_year
+  
+  year_2022 <- bind_rows(year_2022, append_year)
+}
+
+
+
+tourism_count %>%
+  bind_rows(year_2022) -> tourism_full
+
+tourism_count %>%
+  mutate(
+    date = lubridate::my(paste0(sprintf("%02d", month),"-", year)),
+  ) %>%
+  filter(Country != "International Visitor Trips") %>%
+  ggplot(aes(date, travel_count, color = Country))+
+  # geom_area(position="fill")+
+  # geom_col(aes(fill=Country))+
+  geom_line()+
+  scale_y_continuous(labels = scales::label_comma())+
+  scale_color_manual(values = c("#1b998b", "#d7263d", "#f46036", "#2e294e"))+
+  scale_x_date(date_labels = "%Y", breaks = "1 year")+
+  facet_wrap(~Country)+
+  theme_ef()+
+  theme(
+    legend.position = "bottom"
+  )
+
+
+tourism_count %>%
+  mutate(
+    month = factor(month, levels = c(1:12), labels = month.abb[unique(month)])
+  ) %>%
+  filter(Country != "International Visitor Trips") %>%
+  ggplot(aes(fct_rev(month), travel_count, fill = Country))+
+  geom_col(aes(fill=Country))+
+  scale_fill_manual(values = c("#1b998b", "#d7263d", "#f46036", "#2e294e"))+
+  scale_y_continuous(labels = scales::label_number(accuracy = 0.1))+
+  coord_flip()+
+  facet_wrap(~year)+
+  theme_ef()+
+  labs(
+    title = "Number of international travelers, 2011-2022",
+    subtitle = "Source: GNTA, MIA of Georgia"
+  )+
+  theme(
+    legend.position = "bottom"
+  )
+
+
+tourism_count %>% 
+  filter(Country != "International Visitor Trips") %>% 
+  rename(
+    group = Country,
+    all_trips = travel_count
+  )%>%
+  group_by(year, month)%>%
+  select(-group)%>%
+  summarize(
+    all_trips = sum(all_trips, na.rm=T),
+  ) -> total_byruua
+
+
+tourism_count %>% 
+  filter(Country == "International Visitor Trips") %>% 
+  rename(
+    group = Country,
+    all_trips = travel_count
+  )%>%
+  mutate(
+    month_group = case_when(
+      # month %in% c(6, 7 , 8) ~ 1,
+      month %in% c(1:9) ~ 1,
+      T ~ 0
+    )
+  )%>%
+  group_by(year, month_group)%>%
+  select(-group)%>%
+  summarize(
+    all_trips = sum(all_trips, na.rm=T),
+  )%>% write.csv()
+
+tourism_count %>% 
+  filter(Country == "Russia") %>% 
+  rename(
+    group = Country,
+    all_trips = travel_count
+  )%>%
+  mutate(
+    month_group = case_when(
+      # month %in% c(6, 7 , 8) ~ 1,
+      month %in% c(1:9) ~ 1,
+      T ~ 0
+    )
+  )%>%
+  filter(month_group == 1)%>%
+  group_by(year)%>%
+  select(-group)%>%
+  summarize(
+    all_trips = sum(all_trips, na.rm=T),
+  )%>%
+  ggplot(aes(factor(year), all_trips, fill = factor(1)))+
+  geom_col()+
+  scale_fill_manual(values = c("#1b998b", "#d7263d", "#f46036", "#2e294e"))+
+  scale_y_continuous(limits = c(0, 2000000), labels = scales::comma_format())+
+  coord_flip()+
+  geom_text(aes(label = scales::comma(all_trips)), hjust = -1.01, nudge_x = 0.1, family="Lato", size=4, fontface = "bold")+
+  theme_ef()+
+  labs(
+    title = "Number of international travelers from Russia in January-September, 2011-2022",
+    subtitle = "Source: GNTA, MIA of Georgia"
+  )+
+  theme(
+    legend.position = "none"
+  )
+
+
+
+tourism_count %>% 
+  # filter(Country != "International Visitor Trips") %>%
+  left_join(total_byruua, by = c("year", "month")) %>%
+  mutate(
+    travel_count = case_when(
+      Country == "International Visitor Trips" ~ travel_count -all_trips,
+      T ~ as.numeric(travel_count)
+    ),
+    date = lubridate::my(paste0(sprintf("%02d", month),"-", year)),
+    Country = str_replace_all(Country, "International Visitor Trips", "Other countries"),
+    Country = factor(Country),
+    Country = fct_relevel(Country, "Other countries", after=Inf),
+  ) %>%
+  ggplot(aes(date, travel_count, fill = Country))+
+  geom_area(position="fill")+
+  geom_vline(xintercept=as.Date("2022-02-24"),
+             color="grey", linetype = "longdash")+
+  scale_y_continuous(labels = scales::percent)+
+  scale_fill_manual(values = c("#1b998b", "#d7263d", "#f46036", "#2e294e", "#f2cc8f"))+
+#                      c("#3d405b", "#e07a5f", "#1b998b", "#f2cc8f"))+
+  scale_x_date(date_labels = "%Y", breaks = "1 year")+
+  labs(
+    title = "International travelers by country, 2011-2022",
+    subtitle = "Source: GNTA, MIA of Georgia"
+  )+
+  # annotate("text", x=as.Date("2022-02-20"), y=0.5, label="Start of the war", family = "Lato", angle=90, color = "white")+
+  theme_ef()+
+  theme(
+    legend.position = "bottom"
+  )
+
+  
+tourism_count %>% 
+  # filter(Country != "International Visitor Trips") %>%
+  left_join(total_byruua, by = c("year", "month")) %>%
+  filter(year == 2022)
+
