@@ -16,8 +16,9 @@ setwd('D:\\Dropbox (Personal)\\My projects\\scratchpad\\declarations')
 ## 429, 450 not accesible
 ## Scarped on March 15, 2023
 
-for(i in 450:828) {
-  url <- paste0("https://declaration.gov.ge/Api/Declarations?&OrganisationIds=", i)
+# for(i in 450:828) {
+for(i in 430:828) {
+  url <- paste0("https://declaration.acb.gov.ge/Api/Declarations?&OrganisationIds=", i)
 
   req <- POST(url = url,
                       add_headers(.headers =
@@ -34,8 +35,11 @@ for(i in 450:828) {
                                     )))
 
   content(req) |> write_json(paste0("raw_json/", i, '.json'))
+  
+  Sys.sleep(2)
 
 }
+
 
 b <- read_json("raw_json/461.json")
 

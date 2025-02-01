@@ -50,12 +50,12 @@ theme_ds <- function () {
       title = element_blank(),
       # axis.text.x = element_blank(),
       # panel.grid = element_blank(),
-      strip.text = element_text(family = "BPG SSP Crystal", face="bold", size = 28),
-      text = element_text(family= "BPG SSP Crystal"),
-      plot.title = element_text(size=28, face="bold", family="BPG SSP Crystal Caps", hjust = 0),
-      plot.subtitle = element_text(size=24, family="BPG SSP Crystal", hjust=0),
-      plot.caption = element_text(size=12, family="BPG SSP Crystal", hjust=0),
-      axis.text = element_text(size=18, family="BPG SSP Crystal", color = "black"),
+      strip.text = element_text(family = "Enciklopediuri _Uni Nus", face="bold", size = 28),
+      text = element_text(family= "Enciklopediuri _Uni Nus"),
+      plot.title = element_text(size=28, face="bold", family="Enciklopediuri _Uni MT", hjust = 0),
+      plot.subtitle = element_text(size=24, family="Enciklopediuri _Uni Nus", hjust=0),
+      plot.caption = element_text(size=12, family="Enciklopediuri _Uni Nus", hjust=0),
+      axis.text = element_text(size=18, family="Enciklopediuri _Uni Nus", color = "black"),
       legend.position = "none"
     )
 }
@@ -92,7 +92,9 @@ req <- POST(url = url,
                             'Sec-Fetch-Site' = 'cross-site'
                           )))
 
-content(req) |> write_json('parliament_sep22_09.json')
+content(req) |> write_json('parliament_apr18_2024.json')
+
+parliament <-read_json("parliament_apr18_2024.json")
 
 parliament <- content(req)
 
@@ -101,142 +103,24 @@ parliament <- content(req)
 parliament |> 
   tibble() |> 
   unnest_wider(col = parliament) |> 
-  select(Id:BirthDate, DeclarationSubmitDate, Jobs) |>
-  unnest_longer(col = Jobs) |> 
-  tibble() |> 
-  unnest_wider(col = Jobs, names_sep = "_job_") |>
-  select(
-    Id:DeclarationSubmitDate, Jobs_job_Amount, Jobs_job_Currency, Jobs_job_EndDate
-  ) |> 
-  mutate(
-    income_type = "salary"
-  ) |> 
-  rename(
-    "value" = "Jobs_job_Amount",
-    "currency" = "Jobs_job_Currency",
-    "income_date" = "Jobs_job_EndDate"
-  ) |> 
-  mutate(
-    income_date = case_when(
-      income_date == "" ~ DeclarationSubmitDate,
-      T ~ as.character(income_date)
-    )
-  )-> household_income
-
-parliament |> 
-  tibble() |> 
-  unnest_wider(col = parliament) |>
-  select(Id:BirthDate, DeclarationSubmitDate, Securities) |> 
-  unnest_longer(col = Securities) |> 
-  tibble() |> 
-  unnest_wider(col = Securities, names_sep = "_sec_") |> 
-  select(
-    Id:DeclarationSubmitDate, Securities_sec_Amount, Securities_sec_AmountCurrency, Securities_sec_PurchaseYear
-  )|>
-  mutate(
-    income_type = "securities"
-  ) |> 
-  rename(
-    "value" = "Securities_sec_Amount",
-    "currency" = "Securities_sec_AmountCurrency",
-    "income_date" = "Securities_sec_PurchaseYear"
-  ) |> 
-  mutate(
-    income_date = paste0("31.12.", income_date)
-  )-> securities
-
-parliament |> 
-  tibble() |> 
-  unnest_wider(col = parliament) |> 
-  select(Id:BirthDate, DeclarationSubmitDate, Cashes) |> 
-  unnest_longer(col = Cashes) |> 
-  tibble() |> 
-  unnest_wider(col = Cashes, names_sep = "_cash_") |>
-  select(Id:Cashes_cash_Currency) |> 
-  mutate(
-    income_type = "cash_income"
-  ) |> 
-  rename(
-    "value" = "Cashes_cash_Amount",
-    "currency" = "Cashes_cash_Currency", # Add declaration year
-  ) |> 
-  mutate(
-    income_date = paste0("31.12.", lubridate::year(lubridate::dmy(DeclarationSubmitDate))-1)
-  ) -> cash
-
-parliament |> 
-  tibble() |> 
-  unnest_wider(col = parliament) |>
-  select(Id:BirthDate, DeclarationSubmitDate, Gifts) |> 
-  unnest_longer(col = Gifts) |> 
-  tibble() |> 
-  unnest_wider(col = Gifts, names_sep = "_gift_") |> 
-  select(
-    Id:DeclarationSubmitDate, Gifts_gift_Amount, Gifts_gift_Currency
-  ) |> 
-  mutate(
-    income_type = "gift"
-  ) |> 
-  rename(
-    "value" = "Gifts_gift_Amount",
-    "currency" = "Gifts_gift_Currency", # Add declaration year
-  )|> 
-  mutate(
-    income_date = paste0("31.12.", lubridate::year(lubridate::dmy(DeclarationSubmitDate))-1)
-  ) -> gift
-
-parliament |> 
-  tibble() |> 
-  unnest_wider(col = parliament) |>
-  select(Id:BirthDate, DeclarationSubmitDate, InOuts) |> 
+  select(Id:BirthDate, DeclarationSubmitDate, InOuts) |>
   unnest_longer(col = InOuts) |> 
   tibble() |> 
-  unnest_wider(col = InOuts, names_sep = "_inout_") |> 
-  filter(InOuts_inout_Type == 1) |>
+  unnest_wider(col = InOuts, names_sep = "_inout_") |>
   select(
-    Id:DeclarationSubmitDate, InOuts_inout_Amount, InOuts_inout_Currency
-  )|> 
+    Id:DeclarationSubmitDate, InOuts_inout_InOutKind:InOuts_inout_RelationName
+  ) |>
   mutate(
-    income_type = "in_out"
+    income_type = "inout"
   ) |> 
   rename(
     "value" = "InOuts_inout_Amount",
-    "currency" = "InOuts_inout_Currency", # Add declaration year
-  )|> 
-  mutate(
-    income_date = paste0("31.12.", lubridate::year(lubridate::dmy(DeclarationSubmitDate))-1)
+    "currency" = "InOuts_inout_Currency",
+    "income_date" = "DeclarationSubmitDate",
   ) -> inouts
 
-parliament |> 
-  tibble() |> 
-  unnest_wider(col = parliament) |>
-  select(Id:BirthDate, DeclarationSubmitDate, Enterprice) |> 
-  unnest_longer(col = Enterprice) |> 
-  tibble() |> 
-  unnest_wider(col = Enterprice, names_sep = "_entr_")|>
-  select(
-    Id:DeclarationSubmitDate, Enterprice_entr_Income, Enterprice_entr_IncomeCurrencyName
-  )|> 
-  mutate(
-    income_type = "entrepreneurial_activities"
-  ) |> 
-  rename(
-    "value" = "Enterprice_entr_Income",
-    "currency" = "Enterprice_entr_IncomeCurrencyName", # Add declaration year
-  )|> 
-  mutate(
-    income_date = paste0("31.12.", lubridate::year(lubridate::dmy(DeclarationSubmitDate))-1)
-  )  -> entrepreneurial
 
-
-## Currencies
-
-
-
-household_income |>
-  bind_rows(
-    gift, inouts, entrepreneurial # securities cash
-  ) |> 
+inouts |>
   mutate(
     currency = case_when(
       is.na(currency) ~ "GEL",
@@ -261,18 +145,18 @@ get_historical_rates <- function(x){
   day_url <- paste0("https://nbg.gov.ge/gw/api/ct/monetarypolicy/currencies/ka/json/?date=", x)
   
   GET(url = day_url,
-       add_headers(.headers =
-                     c('User-Agent'= 'Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:109.0) Gecko/20100101 Firefox/117.0',
-                       'Accept' = 'text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,*/*;q=0.8',
-                       'Accept-Language' = 'en-CA,en-US;q=0.7,en;q=0.3',
-                       'Accept-Encoding' = 'gzip, deflate, br',
-                       'Content-Type' = 'application/json; charset=utf-8',
-                       'Connection' = 'keep-alive',
-                       'Upgrade-Insecure-Requests' = '1',
-                       'Sec-Fetch-Dest' = 'document',
-                       'Sec-Fetch-Mode' = 'navigate',
-                       'Sec-Fetch-Site' = 'none'
-                     ))) |> 
+      add_headers(.headers =
+                    c('User-Agent'= 'Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:109.0) Gecko/20100101 Firefox/117.0',
+                      'Accept' = 'text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,*/*;q=0.8',
+                      'Accept-Language' = 'en-CA,en-US;q=0.7,en;q=0.3',
+                      'Accept-Encoding' = 'gzip, deflate, br',
+                      'Content-Type' = 'application/json; charset=utf-8',
+                      'Connection' = 'keep-alive',
+                      'Upgrade-Insecure-Requests' = '1',
+                      'Sec-Fetch-Dest' = 'document',
+                      'Sec-Fetch-Mode' = 'navigate',
+                      'Sec-Fetch-Site' = 'none'
+                    ))) |> 
     content()
 }
 
@@ -292,11 +176,7 @@ exchange_rates |>
   ) -> exchange_rates_processed
 
 
-
-household_income |>
-  bind_rows(
-    gift, inouts, entrepreneurial# securities, cash, 
-  ) |> 
+inouts |> 
   mutate(
     currency = case_when(
       is.na(currency) ~ "GEL",
@@ -321,305 +201,221 @@ household_income |>
     )
   ) |>
   mutate(
-    declaration_year = lubridate::year(lubridate::dmy(DeclarationSubmitDate))-1,
-    exclude_securities = case_when(
-      declaration_year != lubridate::year(income_date) & income_type == "securities" ~ 1,
-      T ~ 0
-    )
-  ) |>
-  filter(exclude_securities == 0) -> incomes_all
-  
-incomes_all |>   
-  group_by(Id, FirstName, LastName, BirthDate,  declaration_year) |> 
+    declaration_year = lubridate::year(lubridate::ymd(income_date))-1,
+  ) -> inout_all
+
+inout_all |> 
+  filter(str_detect(InOuts_inout_InOutKind, "სწავ")) |> 
+  filter(FirstName == "ნინო" & LastName == "წილოსანი") 
+
+inout_all |> 
+  filter(str_detect(InOuts_inout_InOutKind, "სწავ")) |>
+  group_by(FirstName, LastName, declaration_year) |>
   summarize(
-    income = sum(income, na.rm = T)
+    value = sum(value, na.rm = T)
   ) |>
   ungroup() |> 
-  arrange(
-    FirstName, LastName, BirthDate, declaration_year
-  ) |>
+  group_by(declaration_year) |> 
   mutate(
-    monthly_income = income/12
-  ) |> 
-  group_by(declaration_year) |>
-  summarize(
-    mean = mean(monthly_income, na.rm = T),
-    median = median(monthly_income, na.rm = T),
-    total = sum(monthly_income, na.rm = T)
-  ) |> 
-  left_join(
-    cpi, by = c(
-      "declaration_year" = "year"
-    )
-  ) |>
+    records = n()
+  ) -> payment_education
+
+
+parliament |> 
+  tibble() |> 
+  unnest_wider(col = parliament) |>
+  select(Id:BirthDate, DeclarationSubmitDate, FamilyMembers) |>
+  unnest_longer(col = FamilyMembers) |>
+  tibble() |> 
+  unnest_wider(col = FamilyMembers, names_sep = "_family_") |>
   mutate(
-    across(
-      mean:total, ~ . / cpi, .names = "{col}_adj"
-    )
-  ) -> monthly_incomes
-
-
-### Total incomes per convocation
-
-incomes_all |>   
-  group_by(Id, FirstName, LastName, BirthDate,  declaration_year) |> 
-  summarize(
-    income = sum(income, na.rm = T)
-  ) |>
-  ungroup() |> 
-  arrange(
-    FirstName, LastName, BirthDate, declaration_year
-  ) |>
-  group_by(declaration_year) |>
-  summarize(
-    mean = mean(income, na.rm = T),
-    median = median(income, na.rm = T),
-    total = sum(income, na.rm = T)
-  ) |> 
-  left_join(
-    cpi, by = c(
-      "declaration_year" = "year"
-    )
-  ) |>
-  mutate(
-    across(
-      mean:total, ~ . / cpi, .names = "{col}_adj"
-    )
-  ) -> annual_incomes
-
-
-### SHINDA household incomes, Geostat
-
-hh_incomes <- read_csv("datasets/mean_median.csv")
-
-### 
-
-hh_incomes |> 
-  filter(year > 2008 & measure == "Median") |>
-  left_join(
-    monthly_incomes, by = c(
-      "year" = "declaration_year"
-    )
-  ) |>
-  rename(
-    "Households" = `Nominal values`,
-    "Parliament" = "median"
-  ) |> 
-  select(-c(`Adjusted to inflation (base: 2010 prices)`, mean, measure)) |> 
-  mutate(
-    across(
-      Households:total, ~ . / cpi, .names = "{col}_adj"
-    )
-  ) |> 
-  mutate(
-    diff = Parliament_adj / Households_adj
+    FamilyMembers_family_BirthDate = format(lubridate::dmy(FamilyMembers_family_BirthDate), "%Y-%m-%d"),
+    income_date = format(lubridate::dmy(DeclarationSubmitDate), "%Y-%m-%d"),
+    declaration_year = lubridate::year(lubridate::ymd(income_date))-1,
   ) |>
   filter(
-    diff == max(diff) | diff == min(diff)
-  ) -> min_max
-    
-  
-
-### Chart
-
-hh_incomes |> 
-  filter(year > 2008 & measure == "Median") |>
-  left_join(
-    monthly_incomes, by = c(
-      "year" = "declaration_year"
-    )
-  ) |> 
-  rename(
-    "Households" = `Adjusted to inflation (base: 2010 prices)`,
-    "Parliament" = "median_adj"
-  ) |> 
-  select(year, Households, Parliament, cpi) |>
-  pivot_longer(-c(year, cpi), names_to = "measure", values_to = "income") |>
+    FamilyMembers_family_Relationship == "შვილი"
+  ) |>
+  group_by(FirstName, LastName, declaration_year) |>
+  summarize(
+    children = n()
+  ) |>
+  ungroup() |> 
+  group_by(declaration_year) |> 
   mutate(
-    year = as.Date(lubridate::my(paste0("01-", year))),
+    mps_with_children = n()
   ) |> 
-  filter(measure != "total") |> 
-  ggplot(aes(year, income, fill = measure, color = measure))+
-  # geom_area(stat = "identity", position = "identity")+
-  # geom_point() +
-  geom_line(linewidth = 1.5) +
-  scale_x_date(date_labels = "%Y", breaks = "1 year")+
-  scale_y_continuous(limits = c(0, 6000))+
-  scale_color_manual(values=c("#036D9C", "#A1331C")) +
-  # scale_alpha_manual(values=c(1, .3))+
-  ## Annotate
-  ## Max. divergence
-  annotate(
-    "point",
-    x=as.Date("2009-01-01"),
-    y = round(hh_incomes$`Adjusted to inflation (base: 2010 prices)`[hh_incomes$year == 2009 & hh_incomes$measure == "Median"], 0),
-    size = 3, color = "#036D9C"
+  ungroup() |> 
+  left_join(
+    payment_education, by = c(
+      "declaration_year",
+      "FirstName",
+      "LastName"
+    )
+  ) -> mps_with_children
+
+
+
+comment_2023 <- data.frame(
+  label = "2023 წელს, ",
+  x = as.Date(c("2021-05-01")),
+  y = 50000,
+  color = "#172325",
+  hjust = 1,
+  halign = 1
+)
+
+children_plot_title <- paste0(
+  "2023 წელს, 24-მა პარლამენტარმა შვილების განათლებაში სულ **<span style='color:#ca562c'>270 896 ლარი </span>** დახარჯა, რაც საშუალოდ, 11 287 ლარს შეადგენს."
+)
+
+round(1075.8159*12, 0)
+
+children_plot_subtitle <- paste0(
+  "2022 წელს, საქართველოში ოჯახის წლიური მედიანური შემოსავალი  **<span style='color:#ca562c'>12 910 ლარი </span>** იყო"
+)
+
+mps_with_children |> 
+  group_by(declaration_year) |> 
+  arrange(value) |>
+  summarize(
+    top_spender_first_name = first(FirstName[order(-value)]),  # Get first name of top spender
+    top_spender_last_name = first(LastName[order(-value)]),  # Get last name of top spender
+    top_spender_spent = first(value[order(-value)]),  # Get last name of top spender
+    spent_on_education = sum(value, na.rm = T),
+    records = first(na.omit(records)),
+    mps_with_children = first(na.omit(mps_with_children)),
+  ) |> 
+  filter(declaration_year >= 2011) |>
+  mutate(
+    declaration_year = as.Date(lubridate::my(paste0("01-", declaration_year))),
+    fill = 1
+  ) |> 
+  mutate(
+    label = paste0(top_spender_first_name, " ", top_spender_last_name, ": ", format(top_spender_spent, big.mark = " ")),
+    x = declaration_year,
+    y = top_spender_spent*2,
+    color = "#c95c3b", # rep("#c95c3b", 13),
+    hjust = 0, #rep(0, 13)
+    width = unit(3, "cm"),
+    halign = 0 #rep(0, 13)
+  ) |> 
+  select(label, x, y, color, hjust, halign)-> top_spenders
+
+annotate_top_spender = data.frame(
+  label  = "ტოპ-მხარჯველი და თანხა, ლარი",
+  x = as.Date(c("2023-01-01")),
+  y = 60000,
+  color = "black", # rep("#c95c3b", 13),
+  hjust = 0.5, #rep(0, 13),
+  halign = 0.5 #rep(0, 13)
+)
+
+annotate_all_edu = data.frame(
+  label  = "განათლებაზე დახარჯული თანხა, სულ (ლარი)",
+  x = as.Date(c("2023-01-01")),
+  y = 400000,
+  color = "black", # rep("#c95c3b", 13),
+  hjust = 0.5, #rep(0, 13),
+  halign = 0.5 #rep(0, 13)
+)
+
+mps_with_children |> View()
+  group_by(declaration_year) |> 
+  arrange(value) |>
+  summarize(
+    top_spender_first_name = first(FirstName[order(-value)]),  # Get first name of top spender
+    top_spender_last_name = first(LastName[order(-value)]),  # Get last name of top spender
+    top_spender_spent = first(value[order(-value)]),  # Get last name of top spender
+    spent_on_education = sum(value, na.rm = T),
+    records = first(na.omit(records)),
+    mps_with_children = first(na.omit(mps_with_children)),
+  ) |> 
+  mutate(
+    declaration_year = as.Date(lubridate::my(paste0("01-", declaration_year))),
+    fill = 1
+  ) |> 
+  ggplot(aes(x = declaration_year, y = spent_on_education, label = format(round(spent_on_education, 0), big.mark = " "), color = as.factor(fill), size = 2)) +
+  geom_point()+
+  scale_y_continuous(labels=function(x) format(x, big.mark = " ", scientific = FALSE)) +
+  scale_x_date(date_labels = "%Y", breaks = "1 year") +
+  scale_color_manual(values = c("#3d5941"))+
+  geom_text(position = position_dodge(width = 2), vjust = -0.4, family = "Enciklopediuri _Uni Nus")+
+  ggtext::geom_textbox(
+    data = top_spenders,
+    aes(
+      label = label,
+    #  alpha = rep(0.5, 13),
+      x = x,
+      y = y,
+      hjust = hjust,
+      halign = halign
+    ), family = "Enciklopediuri _Uni MT", size = 3, fill = NA, box.colour = NA, color="#c95c3b", inherit.aes = FALSE, fontface = "bold"
   ) +
-  annotate(
-    "text",
-    x = as.Date("2009-01-01"),
-    y = round(hh_incomes$`Adjusted to inflation (base: 2010 prices)`[hh_incomes$year == 2009 & hh_incomes$measure == "Median"], 0),
-    label = paste0(round(hh_incomes$`Adjusted to inflation (base: 2010 prices)`[hh_incomes$year == 2009 & hh_incomes$measure == "Median"], 0), " ₾"),
-    color = "#036D9C", family = "BPG SSP Crystal", size = 4, vjust = -1, hjust = -0.2, fontface = "bold"
+  ggtext::geom_textbox(
+    data = annotate_top_spender,
+    aes(
+      label = label,
+      x = x,
+      y = y,
+      hjust = hjust,
+      halign = halign
+    ), family = "Enciklopediuri _Uni MT", size = 3, fill = NA, box.colour = NA, inherit.aes = FALSE, color = "#c95c3b"
   ) +
-  annotate(
-    "point",
-    x=as.Date("2009-01-01"),
-    y = round(monthly_incomes$median_adj[monthly_incomes$declaration_year == 2009], 0),
-    size = 3, color = "#A1331C"
+  ggtext::geom_textbox(
+    data = annotate_all_edu,
+    aes(
+      label = label,
+      x = x,
+      y = y,
+      hjust = hjust,
+      halign = halign
+    ), family = "Enciklopediuri _Uni MT", size = 3, fill = NA, box.colour = NA, inherit.aes = FALSE, color = "#3d5941"
   ) +
-  annotate(
-    "text",
-    x = as.Date("2009-01-01"),
-    y = round(monthly_incomes$median_adj[monthly_incomes$declaration_year == 2009], 0),
-    label = paste0(round(monthly_incomes$median_adj[monthly_incomes$declaration_year == 2009], 0), " ₾"),
-    color = "#A1331C", family = "BPG SSP Crystal", size = 4, vjust = -1, hjust = -0.2, fontface = "bold"
+  geom_curve(
+    aes(
+      x = as.Date(c("2023-01-01")), y = 120000,
+      xend = as.Date(c("2023-01-01")), yend = 80000,
+    ),
+    # arrow = arrow(length = unit(0.1, "cm")),
+    curvature = list(0.15),
+    size = 0.1,
+    alpha = 0.5,
+    color="#c95c3b"
   ) +
-  annotate("segment", x=as.Date("2009-01-01"), xend=as.Date("2009-01-01"),
-           y = min_max$Households_adj[min_max$year == 2009] + 100,
-           yend = min_max$Parliament_adj[min_max$year == 2009] - 100,
-           arrow = arrow(length = unit(0.05, "inches"), ends = "both"),
-           linewidth = 0.6,
-           lineend = "butt",
-           linejoin = "round")+
-  annotate("text", x =as.Date("2009-02-01"), y=min_max$Parliament_adj[min_max$year == 2009]/2,
-           label = "←",
-           hjust = 0,
-           family = "FiraGO",
-           size = 6)+
-  annotate("text", x =as.Date("2009-06-01"), y=min_max$Parliament_adj[min_max$year == 2009]/2, lineheight = 0.8,
-           label=paste0("2009 წელს, პარლამენტის წევრის\nშინამეურნეობისწლიური მედიანური შემოსავალი\nქვეყნის იმავე მაჩვენებელს\n",
-                        round(min_max$diff[min_max$year == 2009], 1), "-ჯერ აღემატებოდა"
-                        ),
-           hjust = 0,
-           family = "BPG SSP Crystal", size = 5)+
-  ## Min. divergence
-  annotate(
-    "point",
-    x=as.Date("2020-01-01"),
-    y = round(hh_incomes$`Adjusted to inflation (base: 2010 prices)`[hh_incomes$year == 2020 & hh_incomes$measure == "Median"], 0),
-    size = 3, color = "#036D9C"
+  geom_curve(
+    aes(
+      x = as.Date(c("2023-01-01")), y = 270895.6,
+      xend = as.Date(c("2023-01-01")), yend = 380000,
+    ),
+    # arrow = arrow(length = unit(0.1, "cm")),
+    curvature = list(0.15),
+    size = 0.1,
+    alpha = 0.5,
+    color="#3d5941"
   ) +
-  annotate(
-    "text",
-    x = as.Date("2020-01-01"),
-    y = round(hh_incomes$`Adjusted to inflation (base: 2010 prices)`[hh_incomes$year == 2020 & hh_incomes$measure == "Median"], 0),
-    label = paste0(round(hh_incomes$`Adjusted to inflation (base: 2010 prices)`[hh_incomes$year == 2020 & hh_incomes$measure == "Median"], 0), " ₾"),
-    color = "#036D9C", family = "BPG SSP Crystal", size = 4, vjust = 2, hjust = 0.5, fontface = "bold"
-  ) +
-  annotate(
-    "point",
-    x=as.Date("2020-01-01"),
-    y = round(monthly_incomes$median_adj[monthly_incomes$declaration_year == 2020], 0),
-    size = 3, color = "#A1331C"
-  ) +
-  annotate(
-    "text",
-    x = as.Date("2020-01-01"),
-    y = round(monthly_incomes$median_adj[monthly_incomes$declaration_year == 2020], 0),
-    label = paste0(round(monthly_incomes$median_adj[monthly_incomes$declaration_year == 2020], 0), " ₾"),
-    color = "#A1331C", family = "BPG SSP Crystal", size = 4, vjust = -1.5, hjust = 0.5, fontface = "bold"
-  ) +
-  annotate("segment", x=as.Date("2020-01-01"), xend=as.Date("2020-01-01"),
-           y = min_max$Households_adj[min_max$year == 2020] + 100,
-           yend = min_max$Parliament_adj[min_max$year == 2020] - 100,
-           arrow = arrow(length = unit(0.05, "inches"), ends = "both"),
-           linewidth = 0.6,
-           lineend = "butt",
-           linejoin = "round")+
-  annotate("text", x =as.Date("2019-07-31"), y=min_max$Parliament_adj[min_max$year == 2020]/2,
-           label = "→",
-           hjust = 0,
-           family = "FiraGO", size = 6)+
-  annotate("text", x =as.Date("2019-06-30"), y=min_max$Parliament_adj[min_max$year == 2020]/2, lineheight = 0.8,
-           label=paste0("2020 წელს, შემოსავლებს შორის ფარდობა\nმინიმუმამდე შემცირდა,თუმცა\nპარლამენტარის შინამეურნეობის შემოსავალი\nქვეყნის მედიანას მაინც\n",
-                        round(min_max$diff[min_max$year == 2020], 1), "-ჯერ მეტი იყო"
-           ),
-           hjust = 1,
-           family = "BPG SSP Crystal", size = 5)+
-  ## 2022
-  annotate(
-    "point",
-    x=as.Date("2022-01-01"),
-    y = round(hh_incomes$`Adjusted to inflation (base: 2010 prices)`[hh_incomes$year == 2022 & hh_incomes$measure == "Median"], 0),
-    size = 3, color = "#036D9C"
-  ) +
-  annotate(
-    "text",
-    x = as.Date("2022-01-01"),
-    y = round(hh_incomes$`Adjusted to inflation (base: 2010 prices)`[hh_incomes$year == 2022 & hh_incomes$measure == "Median"], 0),
-    label = paste0(round(hh_incomes$`Adjusted to inflation (base: 2010 prices)`[hh_incomes$year == 2022 & hh_incomes$measure == "Median"], 0), " ₾"),
-    color = "#036D9C", family = "BPG SSP Crystal", size = 4, vjust = 2, hjust = 0.5, fontface = "bold"
-  ) +
-  annotate(
-    "point",
-    x=as.Date("2022-01-01"),
-    y = round(monthly_incomes$median_adj[monthly_incomes$declaration_year == 2022], 0),
-    size = 3, color = "#A1331C"
-  ) +
-  annotate(
-    "text",
-    x = as.Date("2022-01-01"),
-    y = round(monthly_incomes$median_adj[monthly_incomes$declaration_year == 2022], 0),
-    label = paste0(round(monthly_incomes$median_adj[monthly_incomes$declaration_year == 2022], 0), " ₾"),
-    color = "#A1331C", family = "BPG SSP Crystal", size = 4, vjust = -1.5, hjust = 0.5, fontface = "bold"
-  ) +
-  annotate("segment", x=as.Date("2022-01-01"), xend=as.Date("2022-01-01"),
-           y = hh_incomes$`Adjusted to inflation (base: 2010 prices)`[hh_incomes$year == 2022 & hh_incomes$measure == "Median"] + 100,
-           yend = monthly_incomes$median_adj[monthly_incomes$declaration_year == 2022] - 100,
-           arrow = arrow(length = unit(0.05, "inches"), ends = "both"),
-           linewidth = 0.6,
-           lineend = "butt",
-           linejoin = "round")+
-  annotate("text", x = as.Date("2021-06-30"), y=2500, lineheight = 0.8,
-           label=paste0("2022 წელს,\nპარლამენტარის\nშინამეურნეობის\nშემოსავალი\nქვეყნის მედიანას\n",
-                        round(
-                          monthly_incomes$median_adj[monthly_incomes$declaration_year == 2022]/
-                            hh_incomes$`Adjusted to inflation (base: 2010 prices)`[hh_incomes$year == 2022 & hh_incomes$measure == "Median"], 1
-                        ), "-ჯერ აღემატებოდა"
-           ),
-           hjust = 1,
-           family = "BPG SSP Crystal", size = 5)+
-  annotate("text", x =as.Date("2021-07-31"),
-           y = 2500,
-           label = "→",
-           hjust = 0,
-           family = "FiraGO", size = 6)+
-  ## Category names
-  annotate(
-    "text",
-    x = as.Date("2016-01-01"),
-    y = 5500,
-    label = "პარლამენტის წევრის შინამეურნეობის მედიანური შემოსავალი, 2010 წლის ფასებში",
-    color = "#A1331C", family = "BPG SSP Crystal", size = 4, hjust = 0, fontface = "bold"
-  ) +
-  annotate("segment", x = as.Date("2016-01-01"), xend = as.Date("2015-01-01"),
-           y = 5500, yend = monthly_incomes$median_adj[monthly_incomes$declaration_year == 2015],
-           color = "#A1331C")+
-  annotate(
-    "text",
-    x = as.Date("2016-01-01"),
-    y = 100,
-    label = "საქართველოში შინამეურნეობის მედიანური შემოსავალი, 2010 წლის ფასებში",
-    color = "#036D9C", family = "BPG SSP Crystal", size = 4, hjust = 0, fontface = "bold"
-  ) +
-  annotate("segment", x = as.Date("2016-01-01"), xend = as.Date("2015-01-01"),
-           y = 100,
-           yend = hh_incomes$`Adjusted to inflation (base: 2010 prices)`[hh_incomes$year == 2015 & hh_incomes$measure == "Median"],
-           color = "#036D9C")+
-  ## Labels
   labs(
-    title = "შეფარდება პარლამენტარის და საქართველოში შინამეურნეობების\nყოველთვიურ მედიანურ შემოსავლებს შორის",
-    subtitle = "\nპარლამენტარის შინამეურნეობის ყოველთვიური მედიანური შემოსავალი,\nგაზომილი 2010 წლის ფასებში, ქვეყნის მედიანურ მაჩვენებელზე 7-ჯერ მეტია",
-    caption = "\nწყარო: Declaration.gov.ge API; საქსტატის შინამეურნეობების შემოსავლების და ხარჯების კვლევა, 2009-2022"
+    title = children_plot_title,
+    subtitle = children_plot_subtitle,
+    caption = "\nწყარო: Declaration.gov.ge API; საქართველოს ეროვნული ბანკის API, საქსტატი (შინამეურნეობების ხარჯების და შემოსავლების კვლევა)"
   )+
   theme_ds()+
+  coord_flip()+
   theme(
-    plot.title = element_text(family  = "BPG SSP Crystal Caps")
+    plot.title = ggtext::element_textbox_simple(
+      colour = "#172325", 
+      size = rel(1.5), 
+      face = "bold",
+      lineheight = 1.2,
+      margin = margin(0.5, 0, 1, 0, "lines")
+    ),
+    plot.subtitle = ggtext::element_textbox_simple(
+      colour = "#172325", 
+      size = rel(1.2),
+      lineheight = 1.2,
+      margin = margin(0.5, 0, 1, 0, "lines")
+    )
   )
 
-ggsave("incomes_geo.png", device = "png", width=1536, height=903, units = "px")
-
-
-
+ggsave("children_education.pdf", width = 40, height = 25, units = "cm", device = cairo_pdf)
 
